@@ -283,8 +283,8 @@ if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
   fi
   
   # Create system configuration file
-  # Note: Lutris automatically creates separate Wine prefixes for each game
-  # in ~/.local/share/lutris/runners/wine/prefixes/<game-name>/
+  # Note: Wine prefixes are now stored inside each game's folder for better organization
+  # This makes games more portable and easier to backup/move
   if [[ "$DRY_RUN" == false ]]; then
     cat > "$LUTRIS_CONFIG_DIR/system.yml" <<EOF
 system:
@@ -294,17 +294,19 @@ system:
 wine:
   # Don't use virtual desktop by default (games run in fullscreen)
   Desktop: false
-  # Each game automatically gets its own Wine prefix for isolation
-  # Prefixes are stored in: ~/.local/share/lutris/runners/wine/prefixes/
+  # Store Wine prefix inside each game's directory for better organization
+  # Format: <game_folder>/prefix - makes games portable and easier to manage
+  prefix: \$GAMEDIR/prefix
 EOF
   else
-    echo "[dry-run] Would create $LUTRIS_CONFIG_DIR/system.yml with game_path: $GAMES_DIR/Lutris"
+    echo "[dry-run] Would create $LUTRIS_CONFIG_DIR/system.yml with game_path: $GAMES_DIR/Lutris and prefix: \$GAMEDIR/prefix"
   fi
   
   # Set proper ownership
   run_cmd "chown -R '$SUDO_USER:$SUDO_USER' '$LUTRIS_CONFIG_DIR'"
   
   log "Lutris configured to use $GAMES_DIR/Lutris for game installations"
+  log "Wine prefixes will be stored inside each game folder (portable configuration)"
 fi
 
 # Set CPU governor to performance mode for better gaming performance
@@ -421,7 +423,8 @@ log "Next steps:"
 log "1. Reboot if NVIDIA drivers were installed"
 log "2. Open Lutris and install Wine-GE or Proton-GE runners"
 log "3. Add your games in Lutris (File → Add Game)"
-log "4. Each game will get its own isolated Wine prefix automatically"
+log "4. Each game gets its own Wine prefix inside its folder (portable!)"
 log "5. Game files location: $GAMES_DIR"
+log "   Example structure: $GAMES_DIR/Lutris/MyGame/prefix/"
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 0
