@@ -179,6 +179,9 @@ fi
 # Install gaming helpers
 _install_pkgs gamemode mangohud vulkan-tools vulkan-loader lutris
 
+# Install glxinfo for OpenGL verification (used in verify_setup)
+_install_pkgs mesa-demos
+
 # Install essential 32-bit libraries for gaming compatibility
 log "Installing 32-bit gaming dependencies..."
 _install_pkgs glibc.i686            # 32-bit C library (required for most Windows games)
@@ -205,7 +208,21 @@ if [[ "$INSTALL_WINE" == true ]]; then
 fi
 
 # Configure DXVK and VKD3D
-_install_pkgs dxvk dxvk-native vkd3d vkd3d-proton || true
+log "Installing DXVK and VKD3D for DirectX translation..."
+for pkg in dxvk dxvk-native vkd3d vkd3d-proton; do
+  if rpm -q "$pkg" >/dev/null 2>&1; then
+    log "Package $pkg already installed, skipping"
+  else
+    log "Installing $pkg"
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "[dry-run] dnf -y install $pkg"
+    else
+      if ! dnf -y install "$pkg"; then
+        log "Warning: failed to install $pkg (may not be available in repositories)"
+      fi
+    fi
+  fi
+done
 
 # Install fonts needed by many Windows games
 log "Installing fonts for game compatibility..."
@@ -216,10 +233,21 @@ _install_pkgs google-noto-fonts     # Comprehensive Unicode font support
 # Optionally install Microsoft core fonts (Arial, Times New Roman, etc.)
 log "Attempting to install Microsoft core fonts..."
 _install_pkgs curl                  # Needed to download font installer
-run_cmd "curl -L -O https://downloads.sourceforge.net/project/mscorefonts2/rpms/msttcore-fonts-installer-2.6-1.noarch.rpm && rpm -i msttcore-fonts-installer-2.6-1.noarch.rpm || true"
+MSFONTS_RPM="msttcore-fonts-installer-2.6-1.noarch.rpm"
+if [[ "$DRY_RUN" == false ]]; then
+  if curl -L -O "https://downloads.sourceforge.net/project/mscorefonts2/rpms/$MSFONTS_RPM"; then
+    rpm -i "$MSFONTS_RPM" || log "Warning: Microsoft fonts installation failed"
+    rm -f "$MSFONTS_RPM"  # Clean up downloaded RPM
+  else
+    log "Warning: Failed to download Microsoft fonts installer"
+  fi
+else
+  echo "[dry-run] curl -L -O https://downloads.sourceforge.net/project/mscorefonts2/rpms/$MSFONTS_RPM && rpm -i $MSFONTS_RPM"
+fi
 
 # Set up dedicated games directory structure
 log "Setting up games directory structure..."
+GAMES_DIR=""
 if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
   GAMES_DIR="/home/$SUDO_USER/Games"
   
@@ -233,6 +261,10 @@ if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
   log "  - Lutris: for Lutris-managed games"
   log "  - ROMs: for emulator game files"
   log "  - Installers: for game installation files"
+else
+  GAMES_DIR="/root/Games"
+  log "Warning: Running as root without sudo. Games directory will be created at: $GAMES_DIR"
+  run_cmd "mkdir -p '$GAMES_DIR'/{Lutris,ROMs,Installers}"
 fi
 
 # Configure Lutris default settings
@@ -242,6 +274,13 @@ if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
   
   # Create Lutris config directory
   run_cmd "mkdir -p '$LUTRIS_CONFIG_DIR'"
+  
+  # Backup existing config if it exists
+  if [[ -f "$LUTRIS_CONFIG_DIR/system.yml" && "$DRY_RUN" == false ]]; then
+    BACKUP_FILE="$LUTRIS_CONFIG_DIR/system.yml.backup.$(date +%Y%m%d-%H%M%S)"
+    cp "$LUTRIS_CONFIG_DIR/system.yml" "$BACKUP_FILE"
+    log "Backed up existing Lutris config to $BACKUP_FILE"
+  fi
   
   # Create system configuration file
   # Note: Lutris automatically creates separate Wine prefixes for each game
@@ -351,12 +390,28 @@ if [[ "$ENABLE_PROTON_GE" == true ]]; then
     # Launch as the actual user, not root
     if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
       # Run Lutris in background as user to allow runner downloads
-      su - "$SUDO_USER" -c "nohup lutris >/dev/null 2>&1 &"
-      log "Lutris launched. Use it to install Wine-GE or Proton-GE runners for best compatibility."
+      if su - "$SUDO_USER" -c "nohup lutris >/dev/null 2>&1 & echo \$!" > /tmp/lutris_pid 2>&1; then
+        LUTRIS_PID=$(cat /tmp/lutris_pid 2>/dev/null || echo "")
+        rm -f /tmp/lutris_pid
+        if [[ -n "$LUTRIS_PID" ]]; then
+          log "✓ Lutris launched successfully (PID: $LUTRIS_PID)"
+          log "Use Lutris to install Wine-GE or Proton-GE runners for best compatibility."
+        else
+          log "✓ Lutris launch initiated. Use it to install Wine-GE or Proton-GE runners."
+        fi
+      else
+        log "Warning: Failed to launch Lutris. You can start it manually later."
+      fi
     else
       # Fallback if no sudo user detected
-      nohup lutris >/dev/null 2>&1 &
+      if nohup lutris >/dev/null 2>&1 & then
+        log "✓ Lutris launched. Use it to install Wine-GE or Proton-GE runners."
+      else
+        log "Warning: Failed to launch Lutris. You can start it manually later."
+      fi
     fi
+  else
+    log "Warning: Lutris command not found. Installation may have failed."
   fi
 fi
 
@@ -367,6 +422,6 @@ log "1. Reboot if NVIDIA drivers were installed"
 log "2. Open Lutris and install Wine-GE or Proton-GE runners"
 log "3. Add your games in Lutris (File → Add Game)"
 log "4. Each game will get its own isolated Wine prefix automatically"
-log "5. Game files location: ${GAMES_DIR:-/home/\$USER/Games}"
+log "5. Game files location: $GAMES_DIR"
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 0
