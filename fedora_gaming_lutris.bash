@@ -198,11 +198,6 @@ _install_pkgs libXrandr.i686        # 32-bit X11 display configuration
 _install_pkgs libcurl.i686          # 32-bit network transfer library
 _install_pkgs openssl-libs.i686     # 32-bit SSL/TLS encryption libraries
 
-# Install Steam for additional gaming libraries and controller support
-log "Installing Steam and compatibility tools..."
-_install_pkgs steam                 # Steam client (provides many useful game libraries)
-_install_pkgs steam-devices         # Udev rules for game controllers and Steam hardware
-
 if [[ "$INSTALL_WINE" == true ]]; then
   _install_pkgs wine wine.i686 winetricks
 fi
@@ -295,11 +290,11 @@ wine:
   # Don't use virtual desktop by default (games run in fullscreen)
   Desktop: false
   # Store Wine prefix inside each game's directory for better organization
-  # Format: <game_folder>/prefix - makes games portable and easier to manage
-  prefix: \$GAMEDIR/prefix
+  # Format: <game_folder>/wine-prefix - makes games portable and easier to manage
+  prefix: \$GAMEDIR/wine-prefix
 EOF
   else
-    echo "[dry-run] Would create $LUTRIS_CONFIG_DIR/system.yml with game_path: $GAMES_DIR/Lutris and prefix: \$GAMEDIR/prefix"
+    echo "[dry-run] Would create $LUTRIS_CONFIG_DIR/system.yml with game_path: $GAMES_DIR/Lutris and prefix: \$GAMEDIR/wine-prefix"
   fi
   
   # Set proper ownership
@@ -425,6 +420,6 @@ log "2. Open Lutris and install Wine-GE or Proton-GE runners"
 log "3. Add your games in Lutris (File → Add Game)"
 log "4. Each game gets its own Wine prefix inside its folder (portable!)"
 log "5. Game files location: $GAMES_DIR"
-log "   Example structure: $GAMES_DIR/Lutris/MyGame/prefix/"
+log "   Example structure: $GAMES_DIR/Lutris/MyGame/wine-prefix/"
 log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exit 0

@@ -12,7 +12,6 @@ Automated setup script for transforming Fedora 43+ into a complete gaming enviro
 - **Lutris Configuration**: Sets up Lutris with automatic per-game Wine prefix isolation and config backup
 - **Gaming Stack**: Installs Vulkan, DXVK, VKD3D, GameMode, and MangoHud with improved error handling
 - **32-bit Library Support**: Installs all essential libraries for Windows game compatibility
-- **Steam Integration**: Adds Steam client for additional libraries and controller support
 - **Directory Structure**: Creates organized folders for games, ROMs, and installers (works with sudo and root)
 - **Font Support**: Installs Liberation, DejaVu, Google Noto, and Microsoft core fonts with automatic cleanup
 - **Performance Mode**: Optional CPU governor optimization for gaming
@@ -31,7 +30,7 @@ Automated setup script for transforming Fedora 43+ into a complete gaming enviro
 Each game installed through Lutris automatically gets its own isolated Wine prefix **inside its game folder**:
 
 - **Game installations**: `~/Games/Lutris/<game-name>/`
-- **Wine prefixes**: `~/Games/Lutris/<game-name>/prefix/` (portable configuration!)
+- **Wine prefixes**: `~/Games/Lutris/<game-name>/wine-prefix/` (portable configuration!)
 - **No cross-contamination** between games
 - **Easy backup**: Copy entire game folder to backup both game and settings
 - **Portable**: Move game folders between systems without reconfiguration
@@ -130,7 +129,6 @@ sudo ./fedora_gaming_lutris.bash --no-reboot --install-wine
 - Lutris (game manager)
 - GameMode (performance optimization)
 - MangoHud (performance overlay)
-- Steam (for libraries and controller support)
 - DXVK & VKD3D (DirectX to Vulkan translation)
 - mesa-demos (provides glxinfo for verification)
 - Optional: Wine, Winetricks
@@ -174,11 +172,11 @@ Each game gets its own folder with Wine prefix inside (portable configuration):
 ```text
 ~/Games/Lutris/
 ├── GameName1/
-│   ├── prefix/           # Wine prefix (C: drive, registry, etc.)
+│   ├── wine-prefix/      # Wine prefix (C: drive, registry, etc.)
 │   ├── game_files/       # Actual game executable and data
 │   └── ...
 ├── GameName2/
-│   ├── prefix/
+│   ├── wine-prefix/
 │   ├── game_files/
 │   └── ...
 └── ...
@@ -204,7 +202,6 @@ Lutris configuration is backed up before modification:
 2. **Open Lutris**: Launch from applications menu or run `lutris`
 3. **Install runners**: In Lutris, go to Preferences → Runners and install:
    - Wine-GE (recommended for games)
-   - Proton-GE (for Steam games)
 4. **Add games**: File → Add Game → Choose your game executable
 5. **Configure per game**: Each game gets its own Wine prefix automatically
 
@@ -257,15 +254,10 @@ sudo tail -f /var/log/fedora-gaming-setup.log
 
 ### Wine prefix issues
 
-- Each game has its own prefix inside its folder: `~/Games/Lutris/<game-name>/prefix/`
-- Delete a game's prefix to reset it: `rm -rf ~/Games/Lutris/<game-name>/prefix`
+- Each game has its own prefix inside its folder: `~/Games/Lutris/<game-name>/wine-prefix/`
+- Delete a game's prefix to reset it: `rm -rf ~/Games/Lutris/<game-name>/wine-prefix`
 - Restore Lutris config backup if needed: `cp ~/.config/lutris/system.yml.backup.* ~/.config/lutris/system.yml`
 - **Portable**: Move entire game folder to another system and it will work
-
-### Controller not detected
-
-- Ensure steam-devices is installed: `rpm -q steam-devices`
-- Reconnect controller after Steam installation
 
 ### Lutris not launching with --enable-proton-ge
 
@@ -277,7 +269,7 @@ sudo tail -f /var/log/fedora-gaming-setup.log
 
 **Version 2.1** (November 2025)
 
-- ✅ **Portable Wine Prefixes**: Wine prefixes now stored inside each game folder (`$GAMEDIR/prefix`)
+- ✅ **Portable Wine Prefixes**: Wine prefixes now stored inside each game folder (`$GAMEDIR/wine-prefix`)
 - ✅ **Easy Game Backup**: Copy entire game folder to backup both game files and Wine configuration
 - ✅ **Enhanced Error Handling**: All package installations now report specific failures instead of silent errors
 - ✅ **Auto-Cleanup**: Microsoft fonts installer RPM is automatically removed after installation
@@ -329,7 +321,7 @@ To remove installed components:
 
 ```bash
 # Remove gaming packages
-sudo dnf remove lutris gamemode mangohud steam wine
+sudo dnf remove lutris gamemode mangohud wine
 
 # Remove NVIDIA drivers (if installed)
 sudo dnf remove akmod-nvidia xorg-x11-drv-nvidia*
